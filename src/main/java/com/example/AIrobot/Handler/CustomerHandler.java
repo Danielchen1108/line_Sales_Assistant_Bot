@@ -202,7 +202,7 @@ public class CustomerHandler {
                 Customer selected = session.sameNameList.get(idx - 1);
                 session.selectedCustomerId = selected.getId();
                 session.step = UserSession.Step.UPDATE_CHOOSE_FIELD;
-                return "請問要更新哪個資料？請輸入數字：\n1. 姓名\n2. 電話\n3. 地區\n4. 年齡\n5. 職業\n6. 已購險種\n7. 狀態\n(隨時輸入 @取消 可中止)";
+                return "請問要更新哪個資料？請輸入數字：\n1. 姓名\n2. 身分證字號\n3. 出生年月日\n4. 電話\n5. 地區\n6. 年齡\n7. 職業\n8. 已購險種\n9. 狀態\n(隨時輸入 @取消 可中止)";
             } else {
                 return "請輸入 1~" + session.sameNameList.size() + " 之間的數字。";
             }
