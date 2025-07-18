@@ -4,6 +4,7 @@ import com.example.AIrobot.Handler.CustomerHandler;
 import com.example.AIrobot.Handler.AdvisorHandler;
 import com.example.AIrobot.Service.SessionService;
 import com.example.AIrobot.Util.LineMessageUtil;
+import com.example.AIrobot.Handler.AdminHandler; // 加上 import
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -22,18 +23,21 @@ public class LineWebhookController {
     private final AdvisorHandler advisorHandler;
     private final SessionService sessionService;
     private final LineMessageUtil lineMessageUtil;
+    private final AdminHandler adminHandler; 
 
     public LineWebhookController(
-            CustomerHandler customerHandler,
-            AdvisorHandler advisorHandler,
-            SessionService sessionService,
-            LineMessageUtil lineMessageUtil
-    ) {
-        this.customerHandler = customerHandler;
-        this.advisorHandler = advisorHandler;
-        this.sessionService = sessionService;
-        this.lineMessageUtil = lineMessageUtil;
-    }
+        CustomerHandler customerHandler,
+        AdvisorHandler advisorHandler,
+        SessionService sessionService,
+        LineMessageUtil lineMessageUtil,
+        AdminHandler adminHandler  // 🔧 建構式注入
+) {
+    this.customerHandler = customerHandler;
+    this.advisorHandler = advisorHandler;
+    this.sessionService = sessionService;
+    this.lineMessageUtil = lineMessageUtil;
+    this.adminHandler = adminHandler; // 🔧 設定
+}
 
     @PostMapping
     public ResponseEntity<String> handleWebhook(@RequestBody String requestBody) {
@@ -45,6 +49,24 @@ public class LineWebhookController {
             String replyToken = event.getString("replyToken");
             String userMessage = event.getJSONObject("message").getString("text");
             String userId = event.getJSONObject("source").getString("userId");
+
+            if (!sessionService.hasAdminSession(userId)) {
+            sessionService.setAdminSession(userId, new com.example.AIrobot.model.AdminSession());
+            lineMessageUtil.sendLineReply(replyToken, "📧 請輸入管理者 Email：");
+            return ResponseEntity.ok("OK");
+            }
+
+            
+            // --- Admin 設定流程 ---
+            if (userMessage.trim().equals("@設定管理者")) {
+                sessionService.setAdminSession(userId, new com.example.AIrobot.model.AdminSession());
+                lineMessageUtil.sendLineReply(replyToken, "📧 請輸入管理者 Email：");
+                return ResponseEntity.ok("OK");
+            }
+
+            if (sessionService.hasAdminSession(userId)) {
+                return adminHandler.handleAdminSession(userId, userMessage, replyToken);
+            }
 
             // --- 多步驟流程判斷（有 Session） ---
             if (sessionService.hasAdvisorSession(userId)) {

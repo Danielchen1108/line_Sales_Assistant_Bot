@@ -1,4 +1,4 @@
-package com.example.AIrobot.ServiceImpl;
+package com.example.AIrobot.Service.ServiceImpl;
 
 
 import com.example.AIrobot.Entity.Customer;
