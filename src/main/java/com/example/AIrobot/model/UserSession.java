@@ -25,6 +25,7 @@ public class UserSession {
         DELETE_CONFIRM
     }
 
+    
     public Step step = Step.ASK_NAME;
     public String name;
     public String idNumber;        // 新增：身分證字號

@@ -194,7 +194,7 @@ public class CustomerHandler {
     }
 
     // ---- 拆出各流程method ----
-
+    //已新增至flow
     private String handleChooseSameNameIndex(UserSession session, String userMessage) {
         try {
             int idx = Integer.parseInt(userMessage.trim());
@@ -210,7 +210,7 @@ public class CustomerHandler {
             return "請輸入序號數字！";
         }
     }
-
+    //已新增至flow
     private String handleDeleteChooseIndex(UserSession session, String userMessage) {
         try {
             int idx = Integer.parseInt(userMessage.trim());
@@ -229,7 +229,7 @@ public class CustomerHandler {
             return "請輸入有效的編號！";
         }
     }
-
+    //已新增至flow
     private String handleDeleteConfirm(UserSession session, String userMessage, String userId) {
         String replyText;
         if (userMessage.trim().equals("確認")) {
@@ -244,7 +244,7 @@ public class CustomerHandler {
         }
         return replyText;
     }
-
+    //已新增至flow
     private String handleUpdateChooseField(UserSession session, String userMessage) {
         try {
             int field = Integer.parseInt(userMessage.trim());
