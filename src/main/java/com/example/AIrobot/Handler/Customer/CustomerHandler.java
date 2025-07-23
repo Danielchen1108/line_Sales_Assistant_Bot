@@ -1,4 +1,4 @@
-package com.example.AIrobot.Handler;
+package com.example.AIrobot.Handler.Customer;
 
 import com.example.AIrobot.Service.CustomerService;
 import com.example.AIrobot.Service.OpenAiService;
@@ -271,7 +271,7 @@ public class CustomerHandler {
             return "請輸入數字（1~9）！";
         }
     }
-
+    //已新增至flow
     private String handleUpdateAskUpdateValue(UserSession session, String userMessage, String userId) {
             String value = userMessage.trim();
             int idx = session.updateFieldIndex;
@@ -345,7 +345,7 @@ public class CustomerHandler {
             }
         }
 
-
+    //已新增至flow
     private String handleAddConfirm(UserSession session, String userId) {
     // 身分證只允許 1個大寫字母 + 9個數字
     
@@ -402,7 +402,8 @@ public class CustomerHandler {
     }
 
 
-        //查詢客戶
+        //查詢客戶 
+        //已新增至Command
          public ResponseEntity<String> handleQueryCustomer(String userId, String name, String replyToken) {
             List<Customer> list = customerService.findAllByNameAndCreatedBy(name, userId);
             StringBuilder sb = new StringBuilder();
@@ -438,6 +439,7 @@ public class CustomerHandler {
 
     
     //更新
+    //已新增至flow
             public ResponseEntity<String> handleUpdateCustomer(String userId, String name, String replyToken) {
             List<Customer> list = customerService.findAllByNameAndCreatedBy(name, userId);
             if (list == null || list.isEmpty()) {
@@ -463,7 +465,8 @@ public class CustomerHandler {
             return ResponseEntity.ok("OK");
         }
         //刪除
-        public ResponseEntity<String> handleDeleteCustomer(String userId, String name, String replyToken) {
+        //已新增至flow
+            public ResponseEntity<String> handleDeleteCustomer(String userId, String name, String replyToken) {
             List<Customer> list = customerService.findAllByNameAndCreatedBy(name, userId);
             if (list == null || list.isEmpty()) {
                  someMethod(replyToken, "❌ 查無顧客：" + name);
@@ -487,7 +490,9 @@ public class CustomerHandler {
             someMethod(replyToken, sb.toString());
             return ResponseEntity.ok("OK");
         }
+
             //列表
+            //已新增至command
             public ResponseEntity<String> handleListAllCustomers(String userId, String replyToken) {
             List<Customer> allList = customerService.getAllCustomersByCreatedBy(userId); // 只撈該 user 建立的
 
@@ -516,6 +521,7 @@ public class CustomerHandler {
             return ResponseEntity.ok("OK");
         }
 
+        //已新增至command
             public ResponseEntity<String> handleTopCustomers(String createdBy, int limit, String replyToken) {
                 List<Customer> allList = customerService.getAllCustomersByCreatedBy(createdBy);
 
@@ -561,6 +567,7 @@ public class CustomerHandler {
                 return ResponseEntity.ok("OK");
             }
 
+            //已新增至command
             private boolean isNumeric(String str) {
                 if (str == null || str.trim().isEmpty()) return false;
                 str = str.trim().replace("分", "");

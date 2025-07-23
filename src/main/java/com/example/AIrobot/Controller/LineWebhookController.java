@@ -1,9 +1,11 @@
 package com.example.AIrobot.Controller;
 
-import com.example.AIrobot.Handler.CustomerHandler;
 import com.example.AIrobot.Handler.AdvisorHandler;
+import com.example.AIrobot.Handler.Customer.CustomerCommandHandler;
+import com.example.AIrobot.Handler.Customer.CustomerHandler;
 import com.example.AIrobot.Service.SessionService;
 import com.example.AIrobot.Util.LineMessageUtil;
+import com.example.AIrobot.model.AdvisorSession;
 import com.example.AIrobot.Handler.AdminHandler; // 加上 import
 
 import org.json.JSONArray;
@@ -21,119 +23,68 @@ public class LineWebhookController {
 
     private final CustomerHandler customerHandler;
     private final AdvisorHandler advisorHandler;
+    private final AdminHandler adminHandler;
     private final SessionService sessionService;
     private final LineMessageUtil lineMessageUtil;
-    private final AdminHandler adminHandler; 
+    private final CustomerCommandHandler customerCommandHandler;
 
     public LineWebhookController(
+        CustomerCommandHandler customerCommandHandler,
         CustomerHandler customerHandler,
         AdvisorHandler advisorHandler,
         SessionService sessionService,
         LineMessageUtil lineMessageUtil,
-        AdminHandler adminHandler  // 🔧 建構式注入
-) {
-    this.customerHandler = customerHandler;
-    this.advisorHandler = advisorHandler;
-    this.sessionService = sessionService;
-    this.lineMessageUtil = lineMessageUtil;
-    this.adminHandler = adminHandler; // 🔧 設定
-}
+        AdminHandler adminHandler
+    ) {
+        this.customerCommandHandler = customerCommandHandler;
+        this.customerHandler = customerHandler;
+        this.advisorHandler = advisorHandler;
+        this.sessionService = sessionService;
+        this.lineMessageUtil = lineMessageUtil;
+        this.adminHandler = adminHandler;
+    }
 
     @PostMapping
     public ResponseEntity<String> handleWebhook(@RequestBody String requestBody) {
         try {
-            // 解析 LINE event
             JSONObject event = new JSONObject(requestBody)
                     .getJSONArray("events")
                     .getJSONObject(0);
             String replyToken = event.getString("replyToken");
-            String userMessage = event.getJSONObject("message").getString("text");
+            String userMessage = event.getJSONObject("message").getString("text").trim();
             String userId = event.getJSONObject("source").getString("userId");
 
-            if (!sessionService.hasAdminSession(userId)) {
-            sessionService.setAdminSession(userId, new com.example.AIrobot.model.AdminSession());
-            lineMessageUtil.sendLineReply(replyToken, "📧 請輸入管理者 Email：");
-            return ResponseEntity.ok("OK");
-            }
-
-            
-            // --- Admin 設定流程 ---
-            if (userMessage.trim().equals("@設定管理者")) {
-                sessionService.setAdminSession(userId, new com.example.AIrobot.model.AdminSession());
-                lineMessageUtil.sendLineReply(replyToken, "📧 請輸入管理者 Email：");
-                return ResponseEntity.ok("OK");
-            }
-
-            if (sessionService.hasAdminSession(userId)) {
+            // 1. 管理者流程
+            if (userMessage.equals("@設定管理者") || sessionService.hasAdminSession(userId)) {
                 return adminHandler.handleAdminSession(userId, userMessage, replyToken);
             }
 
-            // --- 多步驟流程判斷（有 Session） ---
-            if (sessionService.hasAdvisorSession(userId)) {
-                // 進入顧問服務流程
+            // 2. 顧問流程
+            if (userMessage.startsWith("@顧問服務") || sessionService.hasAdvisorSession(userId)) {
+                if (!sessionService.hasAdvisorSession(userId)) {
+                    sessionService.setAdvisorSession(userId, new AdvisorSession());
+                }
                 return advisorHandler.handleAdvisorSession(userId, userMessage, replyToken);
             }
+
+            // 3. 客戶多步驟流程
             if (sessionService.hasUserSession(userId)) {
-                // 進入新增/查詢/編輯顧客多步驟流程
+                // 多步流程進行中，僅允許 @上一步/@取消 等特殊指令，其他則回提示
+                if (userMessage.startsWith("@") && 
+                    !userMessage.equals("@取消") && 
+                    !userMessage.equals("@上一步")) {
+                    return replyText(replyToken, "請先完成當前操作或輸入 @取消 結束本次流程");
+                }
                 return customerHandler.handleSession(userId, userMessage, replyToken);
             }
 
-            // --- 無 Session 的主指令判斷 ---
-            if (userMessage.trim().equals("@新增")) {
-                sessionService.setUserSession(userId, new com.example.AIrobot.model.UserSession());
-                someMethod(replyToken, "👤 請輸入顧客姓名：");
-                return ResponseEntity.ok("OK");
-            }
-            if (userMessage.trim().startsWith("@查詢")) {
-                // 範例：@查詢 王小明
-                String name = userMessage.replaceFirst("@查詢", "").trim();
-                return customerHandler.handleQueryCustomer(userId, name, replyToken);
-            }
-            if (userMessage.trim().startsWith("@更新")) {
-                String name = userMessage.replaceFirst("@更新", "").trim();
-                return customerHandler.handleUpdateCustomer(userId, name, replyToken);
-            }
-            if (userMessage.trim().startsWith("@刪除")) {
-                String name = userMessage.replaceFirst("@刪除", "").trim();
-                return customerHandler.handleDeleteCustomer(userId, name, replyToken);
-            }
-            if (userMessage.trim().equals("@列出所有客戶")) {
-                return customerHandler.handleListAllCustomers(userId, replyToken);
-            }
-            if (userMessage.trim().startsWith("@列出成交率最高的人數")) {
-                // 範例：@列出成交率最高的人數 5
-                String numStr = userMessage.replace("@列出成交率最高的人數", "").trim();
-                int limit = 10;
-                try {
-                    limit = Integer.parseInt(numStr);
-                    if (limit <= 0) limit = 10;
-                } catch (Exception e) { /* 預設10 */ }
-                return customerHandler.handleTopCustomers(userId, limit, replyToken);
-            }
-            if (userMessage.trim().startsWith("@顧問服務")) {
-                sessionService.setAdvisorSession(userId, new com.example.AIrobot.model.AdvisorSession());
-                return advisorHandler.handleAdvisorSession(userId, userMessage, replyToken);
-            }
-            if (userMessage.trim().equals("@選單")) {
-                someMethod(replyToken,
-                    "【功能選單】\n" +
-                    "@新增\n" +
-                    "@查詢 姓名\n" +
-                    "@更新 姓名\n" +
-                    "@刪除 姓名\n" +
-                    "@列出所有客戶\n" +
-                    "@列出成交率最高的人數 N\n" +
-                    "@顧問服務\n" +
-                    "@取消\n" +
-                    "@選單"
-                );
-                return ResponseEntity.ok("OK");
+            // 4. 所有 @開頭指令 → 全丟給 CommandHandler，@選單也在裡面集中處理
+            if (userMessage.startsWith("@")) {
+                return customerCommandHandler.handleCommand(userId, userMessage, replyToken);
             }
 
-
-            // 若指令未識別
-            someMethod(replyToken, "請輸入正確的指令（如 @新增、@查詢 姓名、@顧問服務 ...）");
-            return ResponseEntity.ok("OK");
+            // 5. 無效輸入
+            return replyText(replyToken, "⚠️ 請輸入正確的指令，例如 @新增 或 @查詢 姓名");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -141,8 +92,8 @@ public class LineWebhookController {
         }
     }
 
-    // 共用 LINE 訊息回覆
-    public void someMethod(String replyToken,String replyText){
-            lineMessageUtil.sendLineReply(replyToken, replyText);
+    private ResponseEntity<String> replyText(String replyToken, String message) {
+        lineMessageUtil.sendLineReply(replyToken, message);
+        return ResponseEntity.ok("OK");
     }
 }
