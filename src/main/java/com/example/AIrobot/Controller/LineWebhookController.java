@@ -3,6 +3,7 @@ package com.example.AIrobot.Controller;
 import com.example.AIrobot.Handler.AdvisorHandler;
 import com.example.AIrobot.Handler.Customer.CustomerCommandHandler;
 import com.example.AIrobot.Handler.Customer.CustomerHandler;
+import com.example.AIrobot.Handler.Customer.CustomerSessionHandler;
 import com.example.AIrobot.Service.SessionService;
 import com.example.AIrobot.Util.LineMessageUtil;
 import com.example.AIrobot.model.AdvisorSession;
@@ -21,14 +22,16 @@ import org.springframework.web.client.RestTemplate;
 @RequestMapping("/webhook")
 public class LineWebhookController {
 
-    private final CustomerHandler customerHandler;
+    
     private final AdvisorHandler advisorHandler;
     private final AdminHandler adminHandler;
     private final SessionService sessionService;
     private final LineMessageUtil lineMessageUtil;
     private final CustomerCommandHandler customerCommandHandler;
+    private final CustomerSessionHandler customerSessionHandler;
 
     public LineWebhookController(
+        CustomerSessionHandler customerSessionHandler,
         CustomerCommandHandler customerCommandHandler,
         CustomerHandler customerHandler,
         AdvisorHandler advisorHandler,
@@ -36,8 +39,8 @@ public class LineWebhookController {
         LineMessageUtil lineMessageUtil,
         AdminHandler adminHandler
     ) {
+        this.customerSessionHandler = customerSessionHandler;
         this.customerCommandHandler = customerCommandHandler;
-        this.customerHandler = customerHandler;
         this.advisorHandler = advisorHandler;
         this.sessionService = sessionService;
         this.lineMessageUtil = lineMessageUtil;
@@ -72,10 +75,11 @@ public class LineWebhookController {
                 // 多步流程進行中，僅允許 @上一步/@取消 等特殊指令，其他則回提示
                 if (userMessage.startsWith("@") && 
                     !userMessage.equals("@取消") && 
-                    !userMessage.equals("@上一步")) {
+                    !userMessage.equals("@上一步")&&
+                    !userMessage.equals("@略過")) {
                     return replyText(replyToken, "請先完成當前操作或輸入 @取消 結束本次流程");
                 }
-                return customerHandler.handleSession(userId, userMessage, replyToken);
+                return customerSessionHandler.handle(userId, userMessage, replyToken);
             }
 
             // 4. 所有 @開頭指令 → 全丟給 CommandHandler，@選單也在裡面集中處理

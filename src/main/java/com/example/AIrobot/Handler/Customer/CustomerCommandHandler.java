@@ -112,7 +112,7 @@ public class CustomerCommandHandler {
                 sb.append("【第 ").append(i + 1).append(" 筆】\n")
                 .append("👤 姓名：").append(c.getName() != null ? c.getName() : "未填").append("\n")
                 .append("🆔 身分證字號：").append(c.getIdNumber()!= null ? c.getIdNumber() : "未填").append("\n") // ← 這邊原本錯誤
-                .append("🎂 出生年月日：").append(c.getBirthday() != null ? c.getBirthday() : "未填").append("\n") 
+                .append("🎂 出生年月日：").append(c.getBirthday() != null ? c.getBirthday().toString() : "未填").append("\n") 
                 .append("📞 電話：").append(c.getPhone() != null ? c.getPhone() : "未填").append("\n")
                 .append("📍 地區：").append(c.getRegion() != null ? c.getRegion() : "未填").append("\n")
                 .append("🔥 成交機會：").append(c.getPotentialLevel() != null ? c.getPotentialLevel() : "AI尚未分析").append("\n")
