@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
 import java.util.ArrayList;
 
 @Service
@@ -57,16 +58,35 @@ public class CustomerServiceImpl implements CustomerService {
         if (customer != null) {
             switch (fieldIndex) {
                 case 1 -> customer.setName(newValue);
-                case 2 -> customer.setPhone(newValue);
-                case 3 -> customer.setRegion(newValue);
-                case 4 -> customer.setStatus(newValue);
+                case 2 -> customer.setIdNumber(newValue);      // 身分證字號
+                case 3 -> {
+                    try {
+                        customer.setBirthday(LocalDate.parse(newValue));
+                    } catch (Exception e) {
+                        return false; // 格式錯誤，回傳失敗
+                    }
+                }
+                case 4 -> customer.setPhone(newValue);
+                case 5 -> customer.setRegion(newValue);
+                case 6 -> {
+                    try {
+                        customer.setAge(Integer.parseInt(newValue));
+                    } catch (Exception e) {
+                        return false; // 格式錯誤，回傳失敗
+                    }
+                }
+                case 7 -> customer.setJob(newValue);
+                case 8 -> customer.setProductsOwned(newValue);
+                case 9 -> customer.setStatus(newValue);
                 default -> { return false; }
             }
+            System.out.println("id=" + id + ", fieldIndex=" + fieldIndex + ", newValue=" + newValue);
             customerRepository.save(customer);
             return true;
         }
         return false;
     }
+
     // =========================================
 
     @Override

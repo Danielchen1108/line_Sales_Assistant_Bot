@@ -73,6 +73,7 @@ public class LineWebhookController {
             // 3. 客戶多步驟流程
             if (sessionService.hasUserSession(userId)) {
                 // 多步流程進行中，僅允許 @上一步/@取消 等特殊指令，其他則回提示
+                 System.out.println("[DEBUG] Controller 檢查 - userId=" + userId + " 有多步 session，訊息為：" + userMessage);
                 if (userMessage.startsWith("@") && 
                     !userMessage.equals("@取消") && 
                     !userMessage.equals("@上一步")&&

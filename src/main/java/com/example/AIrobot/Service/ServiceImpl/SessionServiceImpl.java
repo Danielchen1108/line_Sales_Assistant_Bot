@@ -29,12 +29,16 @@ public class SessionServiceImpl implements SessionService {
 
     @Override
     public void setUserSession(String userId, UserSession session) {
+        System.out.println("[DEBUG] setUserSession, userId = " + userId + ", step = " + session.step);
         userSessionMap.put(userId, session);
+        System.out.println("[DEBUG] userSessionMap keys after set: " + userSessionMap.keySet());
     }
 
     @Override
     public void removeUserSession(String userId) {
+        System.out.println("[DEBUG] removeUserSession called, userId = " + userId);
         userSessionMap.remove(userId);
+        System.out.println("[DEBUG] userSessionMap keys after remove: " + userSessionMap.keySet());
     }
 
     @Override
