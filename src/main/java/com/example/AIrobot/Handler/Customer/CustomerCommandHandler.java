@@ -2,6 +2,7 @@
 package com.example.AIrobot.Handler.Customer;
 
 import com.example.AIrobot.Entity.Customer;
+import com.example.AIrobot.Handler.AdvisorHandler;
 import com.example.AIrobot.Service.CustomerService;
 import com.example.AIrobot.Service.SessionService;
 import com.example.AIrobot.Util.LineMessageUtil;
@@ -20,13 +21,15 @@ public class CustomerCommandHandler {
     private final LineMessageUtil lineMessageUtil;
     private final CustomerService customerService;
     private final CustomerFlowHandler customerFlowHandler;
+    private final AdvisorHandler advisorHandler;
 
-    public CustomerCommandHandler(SessionService sessionService, LineMessageUtil lineMessageUtil,CustomerService customerService,CustomerFlowHandler customerFlowHandler) {
+    public CustomerCommandHandler(SessionService sessionService, LineMessageUtil lineMessageUtil,CustomerService customerService,CustomerFlowHandler customerFlowHandler,AdvisorHandler advisorHandler) {
 
         this.sessionService = sessionService;
         this.lineMessageUtil = lineMessageUtil;
         this.customerService = customerService;
         this.customerFlowHandler = customerFlowHandler;
+        this.advisorHandler = advisorHandler;
     }
 
         public ResponseEntity<String> handleCommand(String userId, String userMessage, String replyToken) {
@@ -82,6 +85,10 @@ public class CustomerCommandHandler {
             if (userMessage.startsWith("@刪除")) {
                 String name = userMessage.replaceFirst("@刪除", "").trim();
                 return customerFlowHandler.handleSelectDeleteCustomer(userId, name, replyToken);
+            }
+            if (userMessage.equals("@顧問服務")) {
+                // 這裡可以轉給 AdvisorHandler 或你自己的服務邏輯
+                return advisorHandler.handleAdvisorSession(userId,userMessage, replyToken); // 依你的 advisor 處理寫法決定參數
             }
 
             // --- ❌ 無效指令 ---
