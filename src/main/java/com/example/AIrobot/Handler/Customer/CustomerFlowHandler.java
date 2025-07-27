@@ -126,6 +126,7 @@ public class CustomerFlowHandler {
     public ResponseEntity<String> handleDeleteConfirmation(UserSession session, String userMessage, String userId, String replyToken) {
         if (userMessage.trim().equals("確認")) {
             boolean deleted = customerService.deleteCustomerById(session.selectedCustomerId, userId);
+            sessionService.removeUserSession(userId); 
             return lineMessageUtil.replyText(replyToken, deleted ? "✅ 已刪除成功" : "❌ 刪除失敗，請稍後再試。");
         } else {
             return lineMessageUtil.replyText(replyToken, "已取消刪除");
