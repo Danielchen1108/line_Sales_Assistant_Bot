@@ -1,5 +1,6 @@
 package com.example.AIrobot.Handler.Customer;
 
+import com.example.AIrobot.Entity.Customer;
 import com.example.AIrobot.Service.CustomerService;
 import com.example.AIrobot.Service.SessionService;
 import com.example.AIrobot.Util.LineMessageUtil;
@@ -27,7 +28,7 @@ public class CustomerInputHandler {
     public ResponseEntity<String> handleStep(UserSession session, String userId, String userMessage, String replyToken) {
         String input = userMessage.trim();
         String replyText = "";
-
+ // === 新增流程 ===
         switch (session.step) {
             case ASK_NAME -> {
                 session.name = input;
@@ -110,6 +111,37 @@ public class CustomerInputHandler {
                         + "狀態：" + session.status + "\n"
                         + "如正確請輸入\"確認\"，如需取消請輸入\"@取消\"或\"@上一步\"";
             }
+            case CONFIRM -> {
+                if (input.equals("確認")) {
+                    Customer customer = new Customer();
+                    customer.setName(session.name);
+                    customer.setIdNumber(session.idNumber);
+                    customer.setBirthday(session.birthday);
+                    customer.setPhone(session.phone);
+                    customer.setRegion(session.region);
+                    customer.setAge(session.age);
+                    customer.setJob(session.job);
+                    customer.setProductsOwned(session.productsOwned);
+                    customer.setStatus(session.status);
+                    customer.setCreatedBy(userId); // 用來區分是哪位 LINE 使用者建立的
+
+                    customerService.addCustomer(customer); // ✅ 寫入 DB
+
+                    sessionService.removeUserSession(userId); // ✅ 清除流程
+                    replyText = "✅ 客戶資料已成功儲存，感謝填寫！";
+                } else if (input.equals("@上一步")) {
+                    session.step = Step.ASK_STATUS;
+                    replyText = "📝 請重新輸入客戶目前狀態或需求：";
+                } else if (input.equals("@取消")) {
+                    sessionService.removeUserSession(userId);
+                    replyText = "❌ 已取消此次輸入流程。";
+                } else {
+                    replyText = "⚠️ 請輸入「確認」、「@上一步」或「@取消」";
+                }
+                return lineMessageUtil.replyText(replyToken, replyText);
+
+            }
+
 
              
         // === 更新流程 ===
