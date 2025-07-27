@@ -171,29 +171,78 @@ public class CustomerFlowHandler {
         return lineMessageUtil.replyText(replyToken, updated ? "✅ 修改成功" : "❌ 修改失敗");
     }
 
-    /**
-     * 最後新增確認後儲存資料
-     */
-    public ResponseEntity<String> handleFinalAddConfirmation(UserSession session, String userMessage, String userId, String replyToken) {
-        if (userMessage.trim().equals("確認")) {
-            Customer customer = new Customer();
-            customer.setName(session.name);
-            customer.setIdNumber(session.idNumber);
-            customer.setBirthday(session.birthday);
-            customer.setPhone(session.phone);
-            customer.setRegion(session.region);
-            customer.setAge(session.age);
-            customer.setJob(session.job);
-            customer.setProductsOwned(session.productsOwned);
-            customer.setStatus(session.status);
-            customer.setCreatedBy(userId);
+    
+            /**
+         * 處理新增顧客流程的最後確認步驟。
+         * 
+         * 將 UserSession 中的暫存資料組成一個 Customer 實體，
+         * 初步儲存後呼叫 OpenAI API 進行潛力分析，並將分析結果更新到 Customer 資料中，
+         * 再次儲存後回傳格式化的顧客資訊訊息。
+         *
+         * @param session 使用者的暫存對話資料（含欄位內容）
+         * @param userId 使用者的 LINE ID（作為顧客 createdBy）
+         * @return 顯示已新增顧客的詳細資料與 AI 分析結果
+         */
 
+
+    public ResponseEntity<String> handleFinalAddConfirmation(UserSession session, String userMessage, String userId, String replyToken) {
+    if (userMessage.trim().equals("確認")) {
+        // === ↓↓↓ 這裡直接貼入你完整的 AI+回應內容 ===
+        Customer customer = new Customer();
+        customer.setName(session.name);
+        customer.setIdNumber(session.idNumber);
+        customer.setBirthday(session.birthday);
+        customer.setPhone(session.phone);
+        customer.setRegion(session.region);
+        customer.setStatus(session.status);
+        customer.setAge(session.age);
+        customer.setJob(session.job);
+        customer.setProductsOwned(session.productsOwned);
+        customer.setCreatedBy(userId);
+
+        customerService.addCustomer(customer);
+        try {
+            String resultJson = openAiService.analyzeCustomerPotential(customer);
+            JSONObject result = new JSONObject(resultJson);
+            customer.setPotentialLevel(result.optString("成交機會", "未知"));
+            customer.setAiComment(result.optString("評價", "無"));
+            customer.setAiProductAdvice(result.optString("建議產品", "無"));
+            customer.setAiFollowUp(result.optString("後續建議", "無"));
+            customer.setAiTags(result.optString("標籤", "無"));
             customerService.addCustomer(customer);
-            return lineMessageUtil.replyText(replyToken, "✅ 顧客新增成功！");
-        } else {
-            return lineMessageUtil.replyText(replyToken, "❌ 已取消新增。\n如需重新開始請輸入 @新增");
+        } catch (Exception e) {
+            customer.setPotentialLevel("未知");
+            customer.setAiComment("AI 分析失敗");
+            customer.setAiProductAdvice("沒有建議");
+            customer.setAiFollowUp("沒有建議");
+            customer.setAiTags("沒有標籤");
+            customerService.addCustomer(customer);
         }
-    }
+        String updateTime = customer.getUpdatedAt() != null
+                ? customer.getUpdatedAt().toLocalDate().toString()
+                : "無";
+        String reply = "✅ 顧客已新增：\n"
+                        + "👤 姓名：" + customer.getName() + "\n"
+                        + "🆔 身分證字號：" + (customer.getIdNumber() == null ? "未填" : customer.getIdNumber()) + "\n"
+                        + "🎂 出生年月日：" + (customer.getBirthday() == null ? "未填" : customer.getBirthday().toString()) + "\n"
+                        + "📞 電話：" + customer.getPhone() + "\n"
+                        + "📍 地區：" + customer.getRegion() + "\n"
+                        + "🎂 年齡：" + (customer.getAge() == null ? "未填" : customer.getAge()) + "\n"
+                        + "💼 職業：" + (customer.getJob() == null ? "未填" : customer.getJob()) + "\n"
+                        + "🛡️ 已購險種：" + (customer.getProductsOwned() == null ? "未填" : customer.getProductsOwned()) + "\n"
+                        + "📝 狀態：" + customer.getStatus() + "\n"
+                        + "🌟 成交機會：" + (customer.getPotentialLevel() != null ? customer.getPotentialLevel() : "AI尚未分析") + "\n"
+                        + "🤖 評價：" + (customer.getAiComment() != null ? customer.getAiComment() : "AI尚未分析") + "\n"
+                        + "🛒 建議產品：" + (customer.getAiProductAdvice() != null ? customer.getAiProductAdvice() : "AI尚未分析") + "\n"
+                        + "📌 後續建議：" + (customer.getAiFollowUp() != null ? customer.getAiFollowUp() : "AI尚未分析") + "\n"
+                        + "🏷️ 標籤：" + (customer.getAiTags() != null ? customer.getAiTags() : "AI尚未分析") + "\n"
+                        + "最後更新時間：" + updateTime;
+                return lineMessageUtil.replyText(replyToken, reply);
+            } else {
+                return lineMessageUtil.replyText(replyToken, "❌ 已取消新增。\n如需重新開始請輸入 @新增");
+            }
+        }
+
 
     /*
      * 處理使用者輸入的欄位值，根據 UserSession 中選擇的欄位 (updateFieldIndex)
@@ -293,54 +342,7 @@ public class CustomerFlowHandler {
     }
 
 
-            /**
-         * 處理新增顧客流程的最後確認步驟。
-         * 
-         * 將 UserSession 中的暫存資料組成一個 Customer 實體，
-         * 初步儲存後呼叫 OpenAI API 進行潛力分析，並將分析結果更新到 Customer 資料中，
-         * 再次儲存後回傳格式化的顧客資訊訊息。
-         *
-         * @param session 使用者的暫存對話資料（含欄位內容）
-         * @param userId 使用者的 LINE ID（作為顧客 createdBy）
-         * @return 顯示已新增顧客的詳細資料與 AI 分析結果
-         */
 
-
-    public String handleFinalAddConfirmation(UserSession session, String userId) {
-        Customer customer = new Customer();
-        customer.setName(session.name);
-        customer.setIdNumber(session.idNumber);
-        customer.setBirthday(session.birthday);
-        customer.setPhone(session.phone);
-        customer.setRegion(session.region);
-        customer.setStatus(session.status);
-        customer.setAge(session.age);
-        customer.setJob(session.job);
-        customer.setProductsOwned(session.productsOwned);
-        customer.setCreatedBy(userId);
-
-        customerService.addCustomer(customer);
-
-        try {
-            String resultJson = openAiService.analyzeCustomerPotential(customer);
-            JSONObject result = new JSONObject(resultJson);
-            customer.setPotentialLevel(result.optString("成交機會", "未知"));
-            customer.setAiComment(result.optString("評價", "無"));
-            customer.setAiProductAdvice(result.optString("建議產品", "無"));
-            customer.setAiFollowUp(result.optString("後續建議", "無"));
-            customer.setAiTags(result.optString("標籤", "無"));
-            customerService.addCustomer(customer);
-        } catch (Exception e) {
-            customer.setPotentialLevel("未知");
-            customer.setAiComment("AI 分析失敗");
-            customer.setAiProductAdvice("沒有建議");
-            customer.setAiFollowUp("沒有建議");
-            customer.setAiTags("沒有標籤");
-            customerService.addCustomer(customer);
-        }
-
-        return formatCustomerReply(customer);
-    }
 
     /**
      * 啟動更新流程：當輸入 @更新 + 姓名 指令時，查找所有同名顧客，
