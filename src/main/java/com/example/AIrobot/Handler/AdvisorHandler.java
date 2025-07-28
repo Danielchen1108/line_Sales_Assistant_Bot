@@ -35,51 +35,57 @@ public class AdvisorHandler {
         this.lineMessageUtil = lineMessageUtil;
     }
 
-    public ResponseEntity<String> handleAdvisorSession(String userId, String userMessage, String replyToken) {
-        if (!sessionService.hasAdvisorSession(userId)) {
-            return null; // 不屬於顧問服務流程
-        }
-        AdvisorSession advisorSession = sessionService.getAdvisorSession(userId);
-        String replyText = "";
+            public ResponseEntity<String> handleAdvisorSession(String userId, String userMessage, String replyToken) {
+            if (!sessionService.hasAdvisorSession(userId)) {
+                return null; // 不屬於顧問服務流程
+            }
+            AdvisorSession advisorSession = sessionService.getAdvisorSession(userId);
+            String replyText = "";
 
-        // 通用取消指令
-        if (userMessage.trim().equals("@取消")) {
-            sessionService.removeAdvisorSession(userId);
-            someMethod(replyToken, "✅ 顧問服務已取消。");
-            return ResponseEntity.ok("OK");
-        }
-
-        switch (advisorSession.getStep()) {
-            case ASK_TARGET_NAME -> {
-                String name = userMessage.trim();
-                if (name.startsWith("@顧問服務")) {
-                    name = name.replaceFirst("@顧問服務", "").trim();
-                }
-                List<Customer> list = customerService.findAllByNameAndCreatedBy(name, userId);
-                if (list.isEmpty()) {
-                    System.out.println("查詢姓名: " + name + "，userId: " + userId);
-                    replyText = "查無顧客：" + name + "，請重新輸入姓名。";
-                } else {
-                    Customer target = list.get(0); // 若多名同名可再擴充選擇
-                    advisorSession.setTargetCustomer(target);
-                    advisorSession.setTargetName(name);
-                    advisorSession.setStep(AdvisorSession.SessionStep.CONVERSATION);
-                    replyText = "顧問服務已鎖定「" + name + "」，你可以問任何想問的話題～\n(如:「我該如何開啟話題？」)";
-                }
-                sessionService.setAdvisorSession(userId, advisorSession);
-                someMethod(replyToken, replyText);
+            // 通用取消指令
+            if (userMessage.trim().equals("@取消")) {
+                sessionService.removeAdvisorSession(userId);
+                someMethod(replyToken, "✅ 顧問服務已取消。");
                 return ResponseEntity.ok("OK");
             }
-            case CONVERSATION -> {
-                Customer c = advisorSession.getTargetCustomer();
-                // AI 建議
-                String aiReply = openAiService.advisorSuggest(userMessage, c);
-                replyText = "🤖 AI建議：\n" + aiReply;
-                // 維持 advisorSession，不需移除
-                someMethod(replyToken, replyText);
-                return ResponseEntity.ok("OK");
+
+            // ⛔ 若輸入為 @開頭指令，跳出顧問流程
+            if (userMessage.trim().startsWith("@")) {
+                sessionService.removeAdvisorSession(userId); // 結束顧問流程
+                return null; // 交由主 Controller 處理其他指令
             }
-        }
+
+            switch (advisorSession.getStep()) {
+                case ASK_TARGET_NAME -> {
+                    String name = userMessage.trim();
+                    if (name.startsWith("@顧問服務")) {
+                        name = name.replaceFirst("@顧問服務", "").trim();
+                    }
+                    List<Customer> list = customerService.findAllByNameAndCreatedBy(name, userId);
+                    if (list.isEmpty()) {
+                        System.out.println("查詢姓名: " + name + "，userId: " + userId);
+                        replyText = "查無顧客：" + name + "，請重新輸入姓名。";
+                    } else {
+                        Customer target = list.get(0); // 若多名同名可再擴充選擇
+                        advisorSession.setTargetCustomer(target);
+                        advisorSession.setTargetName(name);
+                        advisorSession.setStep(AdvisorSession.SessionStep.CONVERSATION);
+                        replyText = "顧問服務已鎖定「" + name + "」，你可以問任何想問的話題～\n(如:「我該如何開啟話題？」)";
+                    }
+                    sessionService.setAdvisorSession(userId, advisorSession);
+                    someMethod(replyToken, replyText);
+                    return ResponseEntity.ok("OK");
+                }
+                case CONVERSATION -> {
+                    Customer c = advisorSession.getTargetCustomer();
+                    String aiReply = openAiService.advisorSuggest(userMessage, c);
+                    replyText = "🤖 AI建議：\n" + aiReply;
+                    someMethod(replyToken, replyText);
+                    return ResponseEntity.ok("OK");
+                }
+            }
+        
+
         // fallback
         someMethod(replyToken, "發生未知錯誤，請輸入 @取消 結束流程。");
         return ResponseEntity.ok("OK");
