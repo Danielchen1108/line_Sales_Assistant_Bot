@@ -65,6 +65,7 @@ public class LineWebhookController {
             // 2. 顧問流程
             if (userMessage.startsWith("@顧問服務") || sessionService.hasAdvisorSession(userId)) {
                 if (!sessionService.hasAdvisorSession(userId)) {
+                    System.out.println("ID :" + userId);
                     sessionService.setAdvisorSession(userId, new AdvisorSession());
                 }
                 return advisorHandler.handleAdvisorSession(userId, userMessage, replyToken);

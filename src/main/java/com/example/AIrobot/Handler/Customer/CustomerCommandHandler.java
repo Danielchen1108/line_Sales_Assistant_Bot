@@ -86,7 +86,7 @@ public class CustomerCommandHandler {
                 String name = userMessage.replaceFirst("@刪除", "").trim();
                 return customerFlowHandler.handleSelectDeleteCustomer(userId, name, replyToken);
             }
-            if (userMessage.equals("@顧問服務")) {
+            if (userMessage.startsWith("@顧問服務")) {
                 // 這裡可以轉給 AdvisorHandler 或你自己的服務邏輯
                 return advisorHandler.handleAdvisorSession(userId,userMessage, replyToken); // 依你的 advisor 處理寫法決定參數
             }

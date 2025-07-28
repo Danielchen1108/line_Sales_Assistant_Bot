@@ -52,8 +52,12 @@ public class AdvisorHandler {
         switch (advisorSession.getStep()) {
             case ASK_TARGET_NAME -> {
                 String name = userMessage.trim();
+                if (name.startsWith("@顧問服務")) {
+                    name = name.replaceFirst("@顧問服務", "").trim();
+                }
                 List<Customer> list = customerService.findAllByNameAndCreatedBy(name, userId);
                 if (list.isEmpty()) {
+                    System.out.println("查詢姓名: " + name + "，userId: " + userId);
                     replyText = "查無顧客：" + name + "，請重新輸入姓名。";
                 } else {
                     Customer target = list.get(0); // 若多名同名可再擴充選擇

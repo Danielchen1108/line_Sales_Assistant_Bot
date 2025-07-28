@@ -1,6 +1,5 @@
 package com.example.AIrobot.Handler.Customer;
 
-import com.example.AIrobot.Entity.Customer;
 import com.example.AIrobot.Service.CustomerService;
 import com.example.AIrobot.Service.SessionService;
 import com.example.AIrobot.Util.LineMessageUtil;
@@ -17,24 +16,19 @@ public class CustomerInputHandler {
     private final SessionService sessionService;
     private final LineMessageUtil lineMessageUtil;
     private final CustomerService customerService;
-    private final CustomerFlowHandler customerFlowHandler;
 
-    public CustomerInputHandler(SessionService sessionService,
-                                LineMessageUtil lineMessageUtil,
-                                CustomerService customerService,
-                                CustomerFlowHandler customerFlowHandler) {
+
+    public CustomerInputHandler(SessionService sessionService, LineMessageUtil lineMessageUtil,CustomerService customerService) {
         this.sessionService = sessionService;
         this.lineMessageUtil = lineMessageUtil;
         this.customerService = customerService;
-        this.customerFlowHandler = customerFlowHandler;
     }
-
+    //新增流程
     public ResponseEntity<String> handleStep(UserSession session, String userId, String userMessage, String replyToken) {
         String input = userMessage.trim();
         String replyText = "";
 
         switch (session.step) {
-            // ===== 新增流程 =====
             case ASK_NAME -> {
                 session.name = input;
                 session.step = Step.ASK_IDNUMBER;
@@ -66,17 +60,17 @@ public class CustomerInputHandler {
                     }
                 }
                 session.step = Step.ASK_PHONE;
-                replyText = "📞 請輸入電話：";
+                replyText = "📞 請輸入電話：\n(或輸入\"@取消\"或\"@上一步\")";
             }
             case ASK_PHONE -> {
                 session.phone = input;
                 session.step = Step.ASK_REGION;
-                replyText = "📍 請輸入地區：";
+                replyText = "📍 請輸入地區：\n(或輸入\"@取消\"或\"@上一步\")";
             }
             case ASK_REGION -> {
                 session.region = input;
                 session.step = Step.ASK_AGE;
-                replyText = "🎂 請輸入年齡，可打 \"@略過\"";
+                replyText = "🎂 請輸入年齡，可打 \"@略過\"\n(或輸入\"@取消\"或\"@上一步\")";
             }
             case ASK_AGE -> {
                 if (input.equals("@略過")) {
@@ -89,7 +83,7 @@ public class CustomerInputHandler {
                     }
                 }
                 session.step = Step.ASK_JOB;
-                replyText = "💼 請輸入職業，可打 \"@略過\"：";
+                replyText = "💼 請輸入職業，可打 \"@略過\"\n(或輸入\"@取消\"或\"@上一步\")：";
             }
             case ASK_JOB -> {
                 session.job = input.equals("@略過") ? null : input;
@@ -114,55 +108,107 @@ public class CustomerInputHandler {
                         + "職業：" + (session.job == null ? "未填" : session.job) + "\n"
                         + "已購險種：" + (session.productsOwned == null ? "未填" : session.productsOwned) + "\n"
                         + "狀態：" + session.status + "\n"
-                        + "如正確請輸入「確認」，如需取消請輸入「@取消」或「@上一步」";
+                        + "如正確請輸入\"確認\"，如需取消請輸入\"@取消\"或\"@上一步\"";
             }
-            case CONFIRM -> {
-                if (input.equals("確認")) {
-                    sessionService.removeUserSession(userId);
-                    // 這裡要傳四個參數
-                    return customerFlowHandler.handleFinalAddConfirmation(session, input, userId, replyToken);
-                } else {
-                    replyText = "⚠️ 請輸入「確認」";
-                    return lineMessageUtil.replyText(replyToken, replyText);
+
+             
+        // === 更新流程 ===
+            case CHOOSE_SAME_NAME_INDEX -> {
+                try {
+                    int index = Integer.parseInt(input);
+                    if (index < 1 || index > session.sameNameList.size()) {
+                        return lineMessageUtil.replyText(replyToken, "❌ 請輸入有效的編號（1 ~ " + session.sameNameList.size() + "）");
+                    }
+                    session.selectedCustomer = session.sameNameList.get(index - 1);
+                    session.selectedCustomerId = session.selectedCustomer.getId();
+                    session.step = UserSession.Step.UPDATE_CHOOSE_FIELD;
+                    replyText = "請輸入要更新的欄位編號：\n1. 姓名\n2. 身分證字號\n3. 出生年月日\n4. 電話\n5. 地區\n6. 年齡\n7. 職業\n8. 已購險種\n9. 狀態";
+                } catch (Exception e) {
+                    return lineMessageUtil.replyText(replyToken, "❌ 請輸入正確的數字編號！");
                 }
             }
 
-
-
-            // ====== 進階流程：全部委派給 flowHandler ======
-            case CHOOSE_SAME_NAME_INDEX -> {
-                return customerFlowHandler.handleSelectSameNameCustomer(session, input, replyToken, userId);
-            }
-            case DELETE_CHOOSE_INDEX -> {
-                return customerFlowHandler.handleSelectDeleteCustomer(session, input, replyToken, userId);
-            }
-            case DELETE_CONFIRM -> {
-                return customerFlowHandler.handleDeleteConfirmation(session, input, userId, replyToken);
-            }
             case UPDATE_CHOOSE_FIELD -> {
-                return customerFlowHandler.handleUpdateFieldSelection(session, input, replyToken, userId);
+                try {
+                    int field = Integer.parseInt(input);
+                    if (field < 1 || field > 9) {
+                        return lineMessageUtil.replyText(replyToken, "❌ 請輸入1~9之間的數字。");
+                    }
+                    session.updateFieldIndex = field;
+                    session.step = UserSession.Step.UPDATE_ASK_UPDATE_VALUE;
+                    String fieldName = switch (field) {
+                        case 1 -> "姓名";
+                        case 2 -> "身分證字號";
+                        case 3 -> "出生年月日";
+                        case 4 -> "電話";
+                        case 5 -> "地區";
+                        case 6 -> "年齡";
+                        case 7 -> "職業";
+                        case 8 -> "已購險種";
+                        case 9 -> "狀態";
+                        default -> "";
+                    };
+                    replyText = "請輸入新的 " + fieldName + "：";
+                } catch (Exception e) {
+                    replyText = "❌ 請輸入1~9之間的數字。";
+                }
             }
+
             case UPDATE_ASK_UPDATE_VALUE -> {
-                String replyMsg = customerFlowHandler.handleUpdateFieldInput(session, input, userId);
-                sessionService.removeUserSession(userId);
-                return lineMessageUtil.replyText(replyToken, replyMsg);
+                switch (session.updateFieldIndex) {
+                   
+                    case 1 -> session.selectedCustomer.setName(input);
+                    case 2 -> session.selectedCustomer.setIdNumber(input);
+                    case 3 -> {
+                        try {
+                            session.selectedCustomer.setBirthday(LocalDate.parse(input));
+                        } catch (Exception e) {
+                            return lineMessageUtil.replyText(replyToken, "⚠️ 日期格式錯誤，請用 yyyy-MM-dd。");
+                        }
+                    }
+                    case 4 -> session.selectedCustomer.setPhone(input);
+                    case 5 -> session.selectedCustomer.setRegion(input);
+                    case 6 -> {
+                        try {
+                            session.selectedCustomer.setAge(Integer.parseInt(input));
+                        } catch (Exception e) {
+                            return lineMessageUtil.replyText(replyToken, "⚠️ 請輸入數字。");
+                        }
+                    }
+                    case 7 -> session.selectedCustomer.setJob(input);
+                    case 8 -> session.selectedCustomer.setProductsOwned(input);
+                    case 9 -> session.selectedCustomer.setStatus(input);
+                }
+                 session.updateFieldValue = input;
+                session.step = UserSession.Step.UPDATE_CONFIRM;
+                replyText = "請輸入「確認」儲存修改，或「@取消」放棄。";
             }
 
            case UPDATE_CONFIRM -> {
                 if (input.equals("確認")) {
-                    // FlowHandler 統一處理所有 update/AI/格式/DB，外層只管流程
-                    return customerFlowHandler.handleUpdateFieldInput(session, session.updateFieldValue, userId, replyToken);
+                    boolean success = customerService.updateCustomerFieldById(
+                        session.selectedCustomerId,
+                        session.updateFieldIndex,
+                        session.updateFieldValue  // 你可以在 UPDATE_ASK_UPDATE_VALUE case 裡暫存新值到這
+                    );
+                    sessionService.removeUserSession(userId);
+                    replyText = success ? "✅ 資料已更新！" : "❌ 更新失敗，請稍後再試";
+                    return lineMessageUtil.replyText(replyToken, replyText);
                 } else {
                     sessionService.removeUserSession(userId);
-                    return lineMessageUtil.replyText(replyToken, "❌ 已取消更新");
+                    replyText = "❌ 已取消更新";
+                    return lineMessageUtil.replyText(replyToken, replyText);
                 }
             }
-
-            default -> replyText = "⚠️ 系統錯誤，無法處理目前步驟。";
+            
+             default -> {
+                replyText = "⚠️ 系統錯誤，無法處理目前步驟。";
+            }
         }
 
-        // 記得 session 狀態要更新
+        // 更新 session 並回應
         sessionService.setUserSession(userId, session);
         return lineMessageUtil.replyText(replyToken, replyText);
     }
+    
 }
